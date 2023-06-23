@@ -1,0 +1,240 @@
+---
+title: "Flexdashboard mtcars example"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    source_code: embed
+    theme:
+      version: 4
+      bootswatch: darkly
+
+
+---
+
+```{r global}
+library(flexdashboard)
+library(shiny)
+library(knitr)
+library(kableExtra) 
+library(dplyr)
+library(ggplot2)
+library(plotly)
+
+
+data(mtcars)
+```
+
+```{r}
+# https://cran.r-project.org/web/packages/explore/vignettes/explore_mtcars.html
+column_meaning <- list(
+    mpg = 'Miles/(US) gallon',
+    cyl = 'Number of cylinders',
+    disp = 'Displacement (cu.in.)',
+    hp = 'Gross horsepower',
+    drat = 'Rear axle ratio',
+    wt = 'Weight (lb/1000)',
+    qsec = '1/4 mile time',
+    vs	= 'Engine type (0 = V, 1 = straight)',
+    am = 'Transmission (0 = automatic, 1 = manual)',
+    gear = 'Number of forward gears',
+    carb = 'Number of carburetors'
+)
+
+create_df <- function(row, col) {
+    df <- data.frame(matrix(nrow = 1, ncol = 3))
+    names(df) <- c("value", "max")
+    df$value <- mtcars[row,col]
+    df$max <- max(mtcars[col])
+
+    return(df)
+}
+
+create_gauge <- function(row, col){
+    df <- create_df(row, col)
+    g <- gauge(
+        df$value, min = 0, max = df$max, 
+        sectors = gaugeSectors(
+            success = c(0, df$max*0.33),
+            warning = c(df$max*0.33, df$max*0.67),
+            danger = c(df$max*0.67, df$max),
+            colors = c("#ff0097","#ffa600",  "#036c9c")
+        )
+    )  
+    return(g)
+
+}
+
+create_scatter <- function(row, colx, coly){
+  df <- mtcars
+  df$name <- rownames(mtcars)
+  g <- ggplot(df, aes(x = .data[[colx]], y = .data[[coly]], label = name)) +
+    geom_point(color = 'white', size = 1) + 
+    geom_point(data = df[row,], color='purple', size = 3) + 
+    xlab(column_meaning[[colx]]) + ylab(column_meaning[[coly]]) + 
+    theme(
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(fill='transparent'),
+      plot.background = element_rect(fill='transparent', color=NA),
+      legend.background = element_rect(fill='transparent'),
+      legend.box.background = element_rect(fill='transparent'),
+      axis.text = element_text(color = "lightgray"),
+      axis.line = element_line(color = "lightgray"),
+      axis.title = element_text(color = "white"),
+
+    )
+  
+    return(ggplotly(g))
+
+}
+
+
+```
+
+
+
+Sidebar {.sidebar}
+=====================================  
+The dashboard displays the standard R dataset ["mtcars"](https://www.rdocumentation.org/packages/datasets/versions/3.6.2/topics/mtcars), which was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973--74 models). Various figures are on the first page, and the table is on the second page, both accessed from the top panel.  
+
+Please use the dropdown below to select a car from the list. 
+
+
+```{r}
+selectInput("car", "", choices = rownames(mtcars))
+
+```
+<br/>
+After you select a car, the figures and the highlighted row in the table will update accordingly.  For the gauge plots, the color indicates how the selected car compares with the rest of the cars (lower third in pink, middle third in yellow and upper third in blue).  For the scatter plots, the selected car is highlighted with purple.
+
+
+<br/><br/>
+Created by [Aaron M. Geller](https://faculty.wcas.northwestern.edu/aaron-geller/index.html).
+
+Plots
+=====================================  
+
+Row {data-height=100}
+------------------------------------- 
+
+### Miles/(US) gallon
+```{r}
+renderGauge({
+  create_gauge(input$car, 'mpg')
+})
+```
+
+### Number of cylinders
+```{r}
+renderGauge({
+  create_gauge(input$car, 'cyl')
+})
+
+```
+   
+### Displacement (cu.in.)
+```{r}
+renderGauge({
+  create_gauge(input$car, 'disp')
+})
+```   
+
+
+
+
+Row {data-height=100}
+------------------------------------- 
+
+### Gross horsepower
+```{r}
+renderGauge({
+  create_gauge(input$car, 'hp')
+})
+```
+
+### Rear axle ratio
+```{r}
+renderGauge({
+  create_gauge(input$car, 'drat')
+})
+```
+   
+### Weight (lb/1000)
+```{r}
+renderGauge({
+  create_gauge(input$car, 'wt')
+})
+```   
+
+
+
+
+Row {data-height=100}
+-------------------------------------
+
+### 1/4 mile time 
+```{r}
+renderGauge({
+  create_gauge(input$car, 'qsec')
+})
+```
+
+### Number of forward gears 
+```{r}
+renderGauge({
+  create_gauge(input$car, 'gear')
+})
+```
+   
+### Number of carburetors
+```{r}
+renderGauge({
+  create_gauge(input$car, 'carb')
+})
+```   
+
+
+
+Row {data-height=300}
+-------------------------------------
+
+
+### Miles/(US) gallon vs. Horsepower
+```{r}
+renderPlotly({
+  create_scatter(input$car,'mpg', 'hp')
+})
+
+```
+
+
+
+### 1/4 mile time vs. Weight (lb/1000)
+```{r}
+renderPlotly({
+  create_scatter(input$car,'qsec', 'wt')
+})
+
+```
+
+
+Table
+===================================== 
+
+
+### Table
+```{r}
+row_number <- reactive({
+  which(rownames(mtcars) == input$car)
+})
+renderUI(
+  HTML(
+    kable(mtcars) %>%
+      kable_styling() %>%
+      row_spec(row_number(), bold = T, color = "black", background = "lightgray")
+  )
+)
+
+```
