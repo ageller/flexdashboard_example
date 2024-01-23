@@ -13,6 +13,13 @@ output:
 
 ---
 
+```{css my-content, echo = FALSE}
+.height500 {
+    min-height: 500px;
+}
+```
+
+
 ```{r global}
 library(flexdashboard)
 library(shiny)
@@ -197,7 +204,7 @@ renderGauge({
 
 
 
-Row {data-height=300}
+Row {data-height=300, class="height500"}
 -------------------------------------
 
 
